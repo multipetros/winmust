@@ -197,6 +197,12 @@ namespace WinMust
             textBoxBatchFileName.Text = NewPrefs.ShutDownBatchFileName;
             maskedTextBoxBatchDuration.Text = NewPrefs.ShutDownBatchDuration.ToString();
             
+            // === Source Change ===
+            checkBoxOnBatteryBatch.Checked = NewPrefs.OnBatteryExecute;
+            textBoxOnBatteryBatchFileName.Text = NewPrefs.OnBatteryBatchFileName.ToString();
+            checkBoxOnAcLineBatch.Checked = NewPrefs.OnAcLineExecute;
+            textBoxOnAcLineBatchFileName.Text = NewPrefs.OnAcLineBatchFileName.ToString();
+            
             buttonOK.Enabled = false;
         }
 
@@ -297,7 +303,7 @@ namespace WinMust
 
         private void SavePrefs()
         {
-            //safe new preferences
+            //save new preferences
 
             UIPrefsValues CurrentPrefs;
 
@@ -344,6 +350,12 @@ namespace WinMust
             CurrentPrefs.ShutDownExecuteBatch = checkBoxBatch.Checked;
             CurrentPrefs.ShutDownBatchFileName = textBoxBatchFileName.Text;
             CurrentPrefs.ShutDownBatchDuration = System.Int32.Parse(maskedTextBoxBatchDuration.Text);
+            
+            // === Source Change ===
+            CurrentPrefs.OnBatteryExecute = checkBoxOnBatteryBatch.Checked;
+            CurrentPrefs.OnBatteryBatchFileName = textBoxOnBatteryBatchFileName.Text;
+            CurrentPrefs.OnAcLineExecute = checkBoxOnAcLineBatch.Checked;
+            CurrentPrefs.OnAcLineBatchFileName = textBoxOnAcLineBatchFileName.Text;
 
             UPSManager.SavePrefs(CurrentPrefs);
         }
@@ -485,65 +497,34 @@ namespace WinMust
 
         private void checkBoxShutDownOnTime_CheckedChanged(object sender, EventArgs e)
         {
-            if (checkBoxShutDownOnTime.Checked == true)
-            {
-                maskedTextBoxShutDownOnTime.Enabled = true;
-                labelShutDownOnTime1.Enabled = true;
-                checkBoxBatch.Enabled = true;
-            }
-            else
-            {
-                maskedTextBoxShutDownOnTime.Enabled = false;
-                labelShutDownOnTime1.Enabled = false;
-                checkBoxBatch.Enabled = false;
-            }
+            maskedTextBoxShutDownOnTime.Enabled = checkBoxShutDownOnTime.Checked;
+            labelShutDownOnTime1.Enabled = checkBoxShutDownOnTime.Checked;
+            checkBoxBatch.Enabled = checkBoxShutDownOnBattery.Checked || checkBoxShutDownOnTime.Checked;
             buttonOK.Enabled = true;
         }
 
         private void checkBoxBatch_CheckedChanged(object sender, EventArgs e)
         {
-            if (checkBoxBatch.Checked == true)
+            textBoxBatchFileName.Enabled = checkBoxBatch.Checked;
+            maskedTextBoxBatchDuration.Enabled = checkBoxBatch.Checked;
+            labelBatch1.Enabled = checkBoxBatch.Checked;
+            labelBatch2.Enabled = checkBoxBatch.Checked;
+            buttonBatchFileSelect.Enabled = checkBoxBatch.Checked;
+            if (textBoxBatchFileName.Text == "")
             {
-                textBoxBatchFileName.Enabled = true;
-                maskedTextBoxBatchDuration.Enabled = true;
-                labelBatch1.Enabled = true;
-                labelBatch2.Enabled = true;
-                buttonBatchFileSelect.Enabled = true;
-                if (textBoxBatchFileName.Text == "")
-                {
-                    buttonBatchFileSelect.PerformClick(); 
-                }
-                   
-            }
-            else 
-            {
-                textBoxBatchFileName.Enabled = false;
-                maskedTextBoxBatchDuration.Enabled = false;
-                labelBatch1.Enabled = false;
-                labelBatch2.Enabled = false;
-                buttonBatchFileSelect.Enabled = false;
+                buttonBatchFileSelect.PerformClick(); 
             }
             buttonOK.Enabled = true;
         }
 
         private void checkBoxBatch_EnabledChanged(object sender, EventArgs e)
         {
-            if (checkBoxBatch.Enabled)
-            {
-                textBoxBatchFileName.Enabled = checkBoxBatch.Checked;
-                maskedTextBoxBatchDuration.Enabled = checkBoxBatch.Checked;
-                labelBatch1.Enabled = checkBoxBatch.Checked;
-                labelBatch2.Enabled = checkBoxBatch.Checked;
-                buttonBatchFileSelect.Enabled = checkBoxBatch.Checked;
-            }
-            else
-            {
-                textBoxBatchFileName.Enabled = false;
-                maskedTextBoxBatchDuration.Enabled = false;
-                labelBatch1.Enabled = false;
-                labelBatch2.Enabled = false;
-                buttonBatchFileSelect.Enabled = false;
-            }
+            textBoxBatchFileName.Enabled = checkBoxBatch.Checked;
+            maskedTextBoxBatchDuration.Enabled = checkBoxBatch.Checked;
+            labelBatch1.Enabled = checkBoxBatch.Checked;
+            labelBatch2.Enabled = checkBoxBatch.Checked;
+            buttonBatchFileSelect.Enabled = checkBoxBatch.Checked;
+            
         }
         
         private void buttonBatchFileSelect_Click(object sender, EventArgs e)
@@ -592,6 +573,8 @@ namespace WinMust
 
         private void checkBoxShutDownOnBattery_CheckedChanged(object sender, EventArgs e)
         {
+            checkBoxBatch.Enabled = checkBoxShutDownOnBattery.Checked || checkBoxShutDownOnTime.Checked;
+            
             buttonOK.Enabled = true;
         }
 
@@ -724,5 +707,64 @@ namespace WinMust
             }
         }
 
+        
+        void TextBoxWebStateTextChanged(object sender, EventArgs e)
+        {
+        	buttonOK.Enabled = true;
+        }
+        
+        void LinkLabelForkHomeLinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+        	try
+            {
+                System.Diagnostics.Process.Start(linkLabelForkHome.Text);
+            }
+            catch { }
+        }
+        
+        void ButtonOnBatteryBatchFileSelectClick(object sender, EventArgs e)
+        {
+        	if (openBatchFileDialog.ShowDialog() != DialogResult.OK)
+            {
+                checkBoxOnBatteryBatch.Checked = false;
+                openBatchFileDialog.FileName = "";
+            }
+            textBoxOnBatteryBatchFileName.Text = openBatchFileDialog.FileName;
+            buttonOK.Enabled = true;
+        }
+        
+        void ButtonOnAcLineBatchFileSelectClick(object sender, EventArgs e)
+        {
+        	if (openBatchFileDialog.ShowDialog() != DialogResult.OK)
+            {
+                checkBoxOnAcLineBatch.Checked = false;
+                openBatchFileDialog.FileName = "";
+            }
+            textBoxOnAcLineBatchFileName.Text = openBatchFileDialog.FileName;
+            buttonOK.Enabled = true;
+        }
+        
+        void CheckBoxOnBatteryBatchCheckedChanged(object sender, EventArgs e)
+        {
+        	
+            textBoxOnBatteryBatchFileName.Enabled = checkBoxOnBatteryBatch.Checked;
+            buttonOnBatteryBatchFileSelect.Enabled = checkBoxOnBatteryBatch.Checked;
+            if (textBoxOnBatteryBatchFileName.Text == "")
+            {
+                buttonOnBatteryBatchFileSelect.PerformClick(); 
+            }
+            buttonOK.Enabled = true;
+        }
+        
+        void CheckBoxOnAcLineBatchCheckedChanged(object sender, EventArgs e)
+        {
+        	textBoxOnAcLineBatchFileName.Enabled = checkBoxOnBatteryBatch.Checked;
+            buttonOnAcLineBatchFileSelect.Enabled = checkBoxOnBatteryBatch.Checked;
+            if (textBoxOnAcLineBatchFileName.Text == "")
+            {
+                buttonOnAcLineBatchFileSelect.PerformClick(); 
+            }
+            buttonOK.Enabled = true;
+        }
     }
 }

@@ -43,8 +43,12 @@ namespace WinMust
         public int ShutDownOnTimeTime;
         public bool ShutDownOnBatteryCritical;
         public bool ShutDownExecuteBatch;
+        public bool OnBatteryExecute;
+        public bool OnAcLineExecute;
         public int ShutDownBatchDuration;
         public string ShutDownBatchFileName;
+        public string OnBatteryBatchFileName;
+        public string OnAcLineBatchFileName;
     }
 
     public struct UIStatusValues
@@ -112,6 +116,7 @@ namespace WinMust
             timerShutdownChecker = new System.Windows.Forms.Timer(); //Check status of Shutdown/Batch timing
         private ArrayList AvailableCOMPorts = new ArrayList(); //List of currently installed Serial Ports
         private UPSTestHelperBase UPSTestHelper;
+        //private bool stateChanged = false ;
 
         // === Public Methods ===
 
@@ -236,8 +241,12 @@ namespace WinMust
             PrefsValues.ShutDownOnTimeTime = 10;
             PrefsValues.ShutDownOnBatteryCritical = true;
             PrefsValues.ShutDownExecuteBatch = false;
+            PrefsValues.OnBatteryExecute = false;
+            PrefsValues.OnAcLineExecute = false;
             PrefsValues.ShutDownBatchDuration = 20;
             PrefsValues.ShutDownBatchFileName = "";
+            PrefsValues.OnBatteryBatchFileName = "";
+            PrefsValues.OnAcLineBatchFileName = "";
 
             // === Window Location ===
 
@@ -329,7 +338,7 @@ namespace WinMust
                 PrefsValues.ShutDownBatchFileName = key.GetValue("BatchFile").ToString();
                 if (!System.IO.File.Exists(PrefsValues.ShutDownBatchFileName) & PrefsValues.ShutDownBatchFileName != "")
                 {
-                    MessageBox.Show("Batch file does not exist: " + PrefsValues.ShutDownBatchFileName, "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Executable or Batch file does not exist: " + PrefsValues.ShutDownBatchFileName, "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     PrefsValues.ShutDownBatchFileName = "";
                 }
             }
@@ -340,6 +349,39 @@ namespace WinMust
             if (key.GetValue("BatchDuration") != null)
             {
                 PrefsValues.ShutDownBatchDuration = (int)key.GetValue("BatchDuration");
+            }
+            
+            // === Source change ===
+            key = Registry.CurrentUser.OpenSubKey("Software\\WinMust\\SourceChange");
+            if (key == null)
+            {
+                key = Registry.CurrentUser.CreateSubKey("Software\\WinMust\\SourceChange");
+            }
+            if (key.GetValue("OnBatteryExecute") != null)
+            {
+                PrefsValues.OnBatteryExecute = System.Boolean.Parse(key.GetValue("OnBatteryExecute").ToString());
+            }
+            if (key.GetValue("OnBatteryBatchFile") != null)
+            {
+                PrefsValues.OnBatteryBatchFileName = key.GetValue("OnBatteryBatchFile").ToString();
+                if (!System.IO.File.Exists(PrefsValues.OnBatteryBatchFileName) & PrefsValues.OnBatteryBatchFileName != "")
+                {
+                    MessageBox.Show("Executable or Batch file does not exist: " + PrefsValues.OnBatteryBatchFileName, "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    PrefsValues.OnBatteryBatchFileName = "";
+                }
+            }
+            if (key.GetValue("OnAcLineExecute") != null)
+            {
+                PrefsValues.OnAcLineExecute = System.Boolean.Parse(key.GetValue("OnAcLineExecute").ToString());
+            }
+            if (key.GetValue("OnAcLineBatchFile") != null)
+            {
+                PrefsValues.OnAcLineBatchFileName = key.GetValue("OnAcLineBatchFile").ToString();
+                if (!System.IO.File.Exists(PrefsValues.OnAcLineBatchFileName) & PrefsValues.OnAcLineBatchFileName != "")
+                {
+                    MessageBox.Show("Executable or Batch file does not exist: " + PrefsValues.OnAcLineBatchFileName, "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    PrefsValues.OnAcLineBatchFileName = "";
+                }
             }
 
             // === Refresh GUI ===
@@ -393,7 +435,6 @@ namespace WinMust
             }
 
             // === ShutDown ===
-
             key = Registry.CurrentUser.OpenSubKey("Software\\WinMust\\Shutdown", true);
             key.SetValue("ShutDownOnBattery", PrefsValues.ShutDownOnBatteryCritical);
             key.SetValue("ShutDownOnTime", PrefsValues.ShutDownOnTime);
@@ -401,6 +442,13 @@ namespace WinMust
             key.SetValue("ExecuteBatch", PrefsValues.ShutDownExecuteBatch);
             key.SetValue("BatchFile", PrefsValues.ShutDownBatchFileName);
             key.SetValue("BatchDuration", PrefsValues.ShutDownBatchDuration);
+            
+            // === Power Source Change ===
+            key = Registry.CurrentUser.OpenSubKey("Software\\WinMust\\SourceChange", true);
+            key.SetValue("OnBatteryExecute", PrefsValues.OnBatteryExecute) ;
+            key.SetValue("OnBatteryBatchFile", PrefsValues.OnBatteryBatchFileName) ;
+            key.SetValue("OnAcLineExecute", PrefsValues.OnAcLineExecute) ;
+            key.SetValue("OnAcLineBatchFile", PrefsValues.OnAcLineBatchFileName) ;
 
             // === Refresh GUI ===
 
@@ -541,9 +589,9 @@ namespace WinMust
                     System.Diagnostics.Process.Start(PrefsValues.ShutDownBatchFileName);
                     BatchExecuted = true; //prevents multiple calls to this method
                 }
-                catch (SystemException)
+                catch (SystemException err)
                 {
-                    MessageBox.Show("Batch Execution failed!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show(err.Message, "Batch Execution failed!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
         }
@@ -555,6 +603,19 @@ namespace WinMust
             OnBatteryStartTime = DateTime.Now;
             timerShutdownChecker.Interval = 10; // first raise of timer event should be very soon
             timerShutdownChecker.Enabled = true;
+            
+            //executes the power source change batchfile
+            if (PrefsValues.OnBatteryExecute)
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start(PrefsValues.OnBatteryBatchFileName);
+                }
+                catch (SystemException err)
+                {
+                    MessageBox.Show(err.Message, "Batch Execution failed!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
         }
 
         private void StopOnBattery()
@@ -564,6 +625,19 @@ namespace WinMust
             timerShutdownChecker.Enabled = false;
             BatchExecuted = false; //reset to false required, if power comes back between batch execution and shutdown
             ParentMainForm.RefreshCounter(TimeSpan.Zero, TimeSpan.Zero); //reset timers in GUI
+            
+            //executes the power source change batchfile
+            if (PrefsValues.OnAcLineExecute)
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start(PrefsValues.OnBatteryBatchFileName);
+                }
+                catch (SystemException err)
+                {
+                    MessageBox.Show(err.Message, "Batch Execution failed!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
         }
 
         private void TimerShutdownCheckerEvent(Object myObject, EventArgs myEventArgs)
@@ -607,6 +681,11 @@ namespace WinMust
 
                 if (UPSStatusValues.BatteryCritical & PrefsValues.ShutDownOnBatteryCritical)
                 {
+                	if (PrefsValues.ShutDownExecuteBatch & !BatchExecuted)
+                    {
+                        BatchExecuted = true;
+                        ExecuteBatch();
+                    }
                     ShutDownPC();
                 }
             }
